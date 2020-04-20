@@ -1,0 +1,142 @@
+Data Sizes:
+    Data can be different sizes.
+        - .b = byte: 1 byte
+            ex: 0x000000FF
+        - .w = word: 2 bytes
+            ex: 0x0000FFFF
+        - .l = longword: 4 bytes
+            ex: 0xFFFFFFFF
+
+Numbers:
+    Numbers can be represented as hex, dec and bin
+        - hex: #$, #0x
+            ex: #$10 = 16
+            ex: #0x10 = 16
+        - dec: #
+            ex: #10 = 10
+        - bin: #%
+            ex: #%10 = 2
+
+Registers:
+    There are 16 registers to work with. 8 are general purpose
+    while the other 8 are address registers.
+        - d0->d7 = General Purpose
+            -Arithmetic done here. Each GP register is
+                32 bits or 4 bytes in size.
+        - a0->a7 = Address
+            -Address registers can only store addresses.
+            -a7 is used for the Stack Pointer and can be
+                referenced as 'sp'.
+
+Opcodes:
+    There are a lot of opcodes and not all of them are 
+    covered here. However, here are a few and how to use
+    them.
+
+    MOVE:
+        Takes its first param and moves it to the register
+        or address of its second param.
+            ex:
+                move.l #$10, d0 ; Moves 16 to d0
+                move.l d0, d1 ; Moves d0 to d1
+                move.l 0x8000, d0 ; Moves val at addr 0x8000 to d0
+                move.l (a0), d0 ; Moves val in a0 to d0
+    
+    ADD/SUB/MUL/DIV:
+        Fairly obvious here. These opcodes are for basic 
+        arithmetic. Several varients exist which perform
+        slightly different operations at different costs.
+        A few are listed below.
+        - ADDI = Add Immediate. Adds an immediate value to
+                    the contents of a register.
+                        ex: addi.b #$A, d0 ; Add hex 10 to d0
+        - ADDA = Add Address. Adds a value directly to an
+                    addr, but not the value in the addr.
+                        ex: adda.b #1, 0x8000 ; Add dec 1 to addr 0x8000
+        - ADDQ = Add Quick. Adds a value between 1-8 quickly to
+                    the second param.
+                        ex: addq.b #1, d0 ; Add dec 1 to d0
+        - ADDX = Add Extended. Used to add strings of bytes. Both
+                    params must be registers. In the case of addr
+                    registers, you must pre-decrement.
+                        ex: move.b #3, d0 ; Move dec 3 to d0
+                            move.b #$00, CCR ; Clear X-bit and Z-bit of CCR
+                            Loop:
+                                addx.l -(a0), -(a1) ; Add pair of numbers, decrement addr
+                                dbra d0, Loop ; Decrement d0, branch back to Loop until d0 = 0
+                        Note - The Z-bit is cleared if the result is non-zero
+                                and can be used to test for zero after a chain
+                                of multiple precision operations.
+    Note - Size matters. If d0 contained 0x000000FF and you addq.b #1,
+            the result will be 0x00000000 and not 0x00000100. In order
+            to get the roll over, you would need to addq.w #1. Be 
+            mindful of the value in each register!
+    
+    CLR:
+        Stands for Clear. It sets a whole register, part of
+        a register or the data at an addr to 0.
+            ex:
+                clr.l, d0 ; Clears all of d0
+                clr.w, d0 ; Clears the bottom 2-bytes of d0
+                clr.b, d0 ; Clears the bottom byte of d0
+    
+    JMP:
+        JMP means jump. It moves the PC (program counter) to
+        a specified location, then continues executing code.
+        The addr can be specified in either hex or with a 
+        label.
+            ex:
+                Label:
+                    jmp Label ; Loops infinitely
+
+    JSR/RTS:
+        Jump to Subroutine and Return to Subroutine respectively.
+        JSR does the same as JMP, but stores the PC on the stack 
+        so that you can return to that point in code later with 
+        RTS.
+            ex:
+                move.b #$10, d0 ; Move hex 10 to d0
+                jsr Label ; Jump to Label
+                move.b #$12, d0 ; Will continue here after RTS
+                Label:
+                    move.b #4, d0 ; Move dec 4 to d0
+                    rts ; Return one line past jsr
+    
+    DBRA:
+        Decrement and Branch. Often used for loops. Subtracts
+        a value from a register, then jumps back to a label 
+        unless the value in a register equals 0.
+            ex:
+                move.b #6, d0 ; Move dec 6 to d0.
+                Label:
+                    addq.b #1, d1 ; Add dec 1 to d1 just to do something
+                    dbra d0, Label ; Test if d0 is 0. If not, decrement and jump back to Label.
+                    clr.l d1    ; Clear d1 once loop has finished
+    
+    CMP/BCC:
+        CMP means Compare and BCC is Branch on Condition. BCC has
+        various branching opcodes, like BEQ (branch if equal to 0).
+        Normally used to implement an IF statement.
+            ex:
+                GetStringLength:
+                    clr.l d0 ; Clear d0
+
+                    @FindTerm: ; Local label. When referencing @FindTerm, it uses addr of most
+                               ; recently defined @FindTerm.
+                        move.b (a0)+, d1 ; Move byte from addr in a0 to d1, then increment
+                                         ; addr in a0 by 1 byte
+                        cmp.b #0, d1     ; Compare byte to 0
+                        beq.b @End       ; If byte was 0, go to @End
+                        addq.b #1, d0    ; Increment counter at d0
+                        jmp @FindTerm    ; Jump back to FindTerm 
+                    @End:
+                        rts ; End of search, result of cmp is in r0
+                    
+                    move.l #StringAddr, a0 ; Move address of string to a0
+                    jsr GetStringLength    ; Jump to GetStringLength
+                StringAddr:
+                    dc.b "HELLO WORLD", 0  ; Define constant byte "HELLO WORLD"
+                                           ; String is zero-terminated
+    Note:
+        The above example counts the number of chars in a 
+        zero-terminated string.
