@@ -95,14 +95,11 @@ __main:
     move.l (a0)+, 0x00C00000           ; Move Palette data to Data Port. Post-increment.
     dbra d0, @LoopPalette              ; Loop until d0=0
 
-; Now that's loaded, let's get something on screen. Let's show off the power of
-; Bret Hart, who gets very angry when you try to dereference a null pointer, by
-; setting the background color to pink.
 
-; Looking at the palette we loaded, the color pink is 8. The palette ID is 0.
+; Looking at the palette we loaded, the color black is 0. The palette ID is 0.
 ; We're sending this info to VDP Register 7.
 
-    move.w #0x8708, 0x00C00004      ; 0x8RIC where R is Register, I is Palette ID
+    move.w #0x8700, 0x00C00004      ; 0x8RIC where R is Register, I is Palette ID
                                     ; and C is Color.
 
 ; So way below, we have a bunch of characters defined. But one of them is not defined
@@ -114,9 +111,9 @@ __main:
 ; I made your life a bit easier and gave you the result of following that bit pattern
 ; below for a VRAM Write at an addr of 0x0020.
 
-    move.l #0x40200000, 0x00C00004  ; Write the result of bit pattern to Control
-    lea Characters, a0              ; Write the addr of our characters to a0
-    move.l #0x3F, d0                ; 8 characters * 32 bytes = 64 longwords - 1 for the loop
+    move.l #0x40200000, 0x00C00004        ; Write the result of bit pattern to Control
+    lea tgl_font, a0                      ; Write the addr of our official font to a0
+    move.l #0x0000021F, d0                ; 68 characters * 32 bytes = 544 longwords - 1 for the loop
 
     @LoopCharacters:
     move.l (a0)+, 0x00C00000
@@ -134,19 +131,19 @@ __main:
 ; Bits E - The ID of the Pattern to be drawn
 ; So if we want low plane, palette 0, no flipping, and our first pattern, the value we
 ; move into VDP Data would be 0x0001. Below we've moved a bunch of patterns which should
-; write "HELLO, USA" to the screen. It's quite an eyesore, but a good start nonetheless.
+; write "Hello, USA!" to the screen.
 
     move.l #0x40000003, 0x00C00004  ; Write to VRAM addr 0xC000
-    move.w #0x0001, 0x00C00000      ; Low plane, palette 0, no flip, pattern ID 1
-    move.w #0x0002, 0x00C00000
-    move.w #0x0003, 0x00C00000
-    move.w #0x0003, 0x00C00000
-    move.w #0x0004, 0x00C00000
-    move.w #0x0005, 0x00C00000
-    move.w #0x0000, 0x00C00000
-    move.w #0x0006, 0x00C00000
-    move.w #0x0007, 0x00C00000
-    move.w #0x0008, 0x00C00000
+    move.w #0x0008, 0x00C00000      ; Low plane, palette 0, no flip, pattern ID 8
+    move.w #0x001F, 0x00C00000
+    move.w #0x0026, 0x00C00000
+    move.w #0x0026, 0x00C00000
+    move.w #0x0029, 0x00C00000
+    move.w #0x0042, 0x00C00000
+    move.w #0x0015, 0x00C00000
+    move.w #0x0013, 0x00C00000
+    move.w #0x0001, 0x00C00000
+    move.w #0x003F, 0x00C00000
 
     stop #$2700 ; Halt CPU
 
@@ -175,88 +172,9 @@ Palette:
 
 ; Below is a definition of a Pattern. Each pattern is 
 ; 8x8 pixels. Every defined bit represents a color from
-; our current palette. So all the 1's mean red and all
-; the 0's mean transparent. The pattern below creates
-; the letter H.
-Characters:
-    ; H
-    dc.l 0x11000110
-    dc.l 0x11000110
-    dc.l 0x11000110
-    dc.l 0x11111110
-    dc.l 0x11000110
-    dc.l 0x11000110
-    dc.l 0x11000110
-    dc.l 0x00000000
+; our current palette. So all the 5's mean white and all
+; the 0's mean transparent. 
 
-    ; E
-    dc.l 0x22222222
-    dc.l 0x22000000
-    dc.l 0x22000000
-    dc.l 0x22222222
-    dc.l 0x22000000
-    dc.l 0x22000000
-    dc.l 0x22222222
-    dc.l 0x00000000
-
-    ; L
-    dc.l 0x66000000
-    dc.l 0x66000000
-    dc.l 0x66000000
-    dc.l 0x66000000
-    dc.l 0x66000000
-    dc.l 0x66000000
-    dc.l 0x66666666
-    dc.l 0x00000000
-
-    ; O
-    dc.l 0x07777700
-    dc.l 0x77707770
-    dc.l 0x77000770
-    dc.l 0x77000770
-    dc.l 0x77000770
-    dc.l 0x77707770
-    dc.l 0x07777700
-    dc.l 0x00000000
-
-    ; ,
-    dc.l 0x00000000
-    dc.l 0x00000000
-    dc.l 0x00000000
-    dc.l 0x00000000
-    dc.l 0x00000000
-    dc.l 0x00BB0000
-    dc.l 0x0B000000
-    dc.l 0x00000000
-
-    ; U
-    dc.l 0x11000011
-    dc.l 0x11000011
-    dc.l 0x11000011
-    dc.l 0x11000011
-    dc.l 0x11000011
-    dc.l 0x01100110
-    dc.l 0x00111100
-    dc.l 0x00000000
-
-    ; S
-    dc.l 0x00555500
-    dc.l 0x00500000
-    dc.l 0x00500000
-    dc.l 0x00555500
-    dc.l 0x00000500
-    dc.l 0x00000500
-    dc.l 0x00555500
-    dc.l 0x00000000
-
-    ; A
-    dc.l 0x00333300
-    dc.l 0x03300330
-    dc.l 0x03300330
-    dc.l 0x03333330
-    dc.l 0x03300330
-    dc.l 0x03300330
-    dc.l 0x03300330
-    dc.l 0x00000000
+    include tgl_font.asm
 
 __end:  ; Always the last line - end of ROM address
